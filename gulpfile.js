@@ -1,4 +1,4 @@
-const {src, dest, parallel, series} = require('gulp');
+const {src, dest, parallel, series, watch} = require('gulp');
 // HTML
 const htmlmin = require('gulp-htmlmin');
 // const rename = require('gulp-rename');
@@ -9,6 +9,7 @@ const uglify = require('gulp-uglify-es').default;
 const sass = require('gulp-sass');
 sass.compiler = require('node-sass');
 const stripCssComments = require('gulp-strip-css-comments');
+const autoprefixer = require('gulp-autoprefixer');
 // IMAGE
 const imagemin = require('gulp-imagemin');
 // String replace
@@ -18,35 +19,43 @@ const realFavicon = require('gulp-real-favicon');
 const fs = require('fs');
 const FAVICON_DATA_FILE = 'faviconData.json';
 
-const js = () =>
-  src('src/js/*.js')
+const js = () => {
+  return src('src/js/*.js')
     .pipe(babel())
     .pipe(uglify())
     .pipe(dest('public/js'));
+};
 
-const jsVendor = () =>
-  src('node_modules/jquery/dist/jquery.min.js')
+const jsVendor = () => {
+  return src('node_modules/jquery/dist/jquery.min.js')
     .pipe(dest('public/js/vendor'));
+};
 
-const css = () =>
-  src('src/css/*.scss')
+const css = () => {
+  return src('src/css/*.scss')
+    .pipe(autoprefixer({
+      browsers: ['last 2 versions'],
+      cascade: false
+    }))
     .pipe(sass.sync({outputStyle: 'compressed'}).on('error', sass.logError))
     .pipe(src('node_modules/normalize.css/normalize.css'))
     .pipe(stripCssComments())
     .pipe(dest('public/css'));
+};
 
-const html = () =>
-  src('src/index.html')
+const html = () => {
+  return src('src/index.html')
     .pipe(replace('../node_modules/normalize.css/', 'css/'))
     .pipe(replace('../node_modules/jquery/dist/', 'js/vendor/'))
     .pipe(htmlmin({collapseWhitespace: true}))
     .pipe(dest('public'));
+};
 
-const img = () =>
-  src('src/img/*.*')
+const img = () => {
+  return src('src/img/*.*')
     .pipe(imagemin())
     .pipe(dest('public/img'));
-
+};
 
 const createFavicon = (done) => {
   realFavicon.generateFavicon({
@@ -109,9 +118,20 @@ const createFavicon = (done) => {
 const injectFavicon = () => {
   return src(['public/index.html'])
     .pipe(realFavicon.injectFaviconMarkups(JSON.parse(fs.readFileSync(FAVICON_DATA_FILE)).favicon.html_code))
+    .pipe(replace('href="/', 'href="'))
+    .pipe(replace('content="/', 'content="'))
     .pipe(dest('public'));
 };
+// Watch
 
-exports.fav = createFavicon;
-exports.injectFavicon = injectFavicon;
+const cssWatch = () => {
+  return src('src/css/*.scss')
+    .pipe(sass().on('error', sass.logError))
+    .pipe(dest('src/css'));
+};
+const w = () => {
+  watch('src/css/*.scss', cssWatch);
+};
+
+exports.watch = w;
 exports.build = series(parallel(js, jsVendor, css, html), img, createFavicon, injectFavicon);
