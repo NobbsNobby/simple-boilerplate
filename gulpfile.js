@@ -18,6 +18,8 @@ const replace = require('gulp-replace');
 const realFavicon = require('gulp-real-favicon');
 const fs = require('fs');
 const FAVICON_DATA_FILE = 'faviconData.json';
+//Clean
+const del = require('del');
 
 const js = () => {
   return src('src/js/*.js')
@@ -114,8 +116,8 @@ const createFavicon = (done) => {
     done();
   });
 };
-
 const injectFavicon = () => {
+
   return src(['public/index.html'])
     .pipe(realFavicon.injectFaviconMarkups(JSON.parse(fs.readFileSync(FAVICON_DATA_FILE)).favicon.html_code))
     .pipe(replace('href="/', 'href="'))
@@ -133,5 +135,10 @@ const w = () => {
   watch('src/css/*.scss', cssWatch);
 };
 
+//clear
+const cleaning = () => {
+  return del('public')
+};
+exports.del = cleaning;
 exports.watch = w;
 exports.build = series(parallel(js, jsVendor, css, html), img, createFavicon, injectFavicon);
